@@ -1,0 +1,83 @@
+Automation: Codepipeline and codedeploy:
+
+
+Codepipeline
+	Developer tools:
+		(i) Source
+		(ii) Artifacts
+		(iii) Build
+		(iv) Deploy
+		(v) Pipeline
+		
+	
+Before deploying we need create 2 roles in IAM, one for EC2 and another for CodeDeploy.
+and EC2 instance to deploy code and run in server,
+(i) EC2 role
+	IAM --> roles --> create role 
+		Step1: select trusted entity
+			AWS service --> Service or use cases (EC2) --> next
+		Step2: Add permissions
+			AmazonSSMFullAccess
+			AmazonEC2RoleforSSM
+			AmazonEC2FullAccess
+
+		Step3: name, review and create
+			Name(role-for-Codedeploy) --> create role
+		
+(ii) CodeDeploy role
+	IAM --> roles --> create role 
+		Step1: select trusted entity
+			AWS service --> Service or use cases (CodeDeploy) --> next
+		Step2: Add permissions
+			AWSCodeDeployRole --> next
+			Code Deploy Role 
+then add permission     Codedeployfull access
+		Step3: name, review and create
+			Name(role-for-CD) --> create role
+			
+(iii) create instance to deploy code 
+	 Create instance --> linux, network settings (select existing security group) --> advanced details (IAM instance profile --> role-for-codedeploy) --> copy paste below code for installing required prerequisites 
+	(#!/bin/bash
+	sudo yum -y update
+	sudo amazon-linux-extras install epel -y
+	curl -sL https://rpm.nodesource.com/setup_6.x | sudo -E bash -
+	sudo yum install nodejs -y
+	sudo npm install express
+	sudo yum -y install ruby
+	sudo yum 0y install wget
+	cd /home/ec2-user
+	wget https://aws-codedeploy-ap-south-1.s3.amazonaws.com/latest/install
+	sudo chmod +x ./install
+	sudo ./install auto)  
+	--> launch instance
+
+
+
+(iv) create application
+	Developer tools --> CodeDeploy --> applications --> create application
+		Application name (Express-App-Node-JS) --> compute platform (EC2) --> create applications
+		
+		Deployment group
+			Deployment group name (My-deployment_express-group) --> service role (role-for-CD) --> deployment type (In place) --> environment configuration (AmazonEC2 auto scaling groups) --> Tag group (Key:Name, Value:Code-deploy-Automation) --> Agent configurations (Install AWS CodeDeploy Agent --> never) -->  deployment settings (COdeDeployDefault_AllAtOnce) --> create deployment group
+
+
+(v) Pipeline --> get started --> create pipeline
+	Step1: create pipeline settings
+		Pipeline name (My-express-app-pipeline) --> execution mode (Suspended) --> next
+	Step2: add source stage
+		Source provider (GitHub (version2)) -->connection (connect to GitHub --> create GitHub app connection (My-GitHub-connection) --> connect to GitHub --> authorise AWS connector -->   Install a new app --> login to GitHub account --> select repository (select repo having source code) --> save --> taken no will be generated --> connect) --> select created GitHub-connection (demo-express-app-git-connect) --> Repository name (choose repo) --> default branch (main) --> trigger (no filter) --> next
+	Step3: add build stage
+		next
+	Step4: add delivery stage
+		Deploy provider (AWS CodeDeploy) --> region (select working region) --> Application name (Express-App-Node-JS) --> next
+	Step5: review
+		Create pipeline
+		*instance* security update -> open inbound rule -> add custom port (3000)
+		
+	
+	Check logs
+		Deploy --> view details --> click execution details link
+		
+	Check in browser
+		instanceIP:3000
+instanceIP:3000/products
